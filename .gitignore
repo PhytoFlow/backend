@@ -1,0 +1,32 @@
+# Desconsiderar diretórios gerados
+venv/
+__pycache__/
+.pytest_cache/
+build/
+dist/
+migrations/
+
+# Desconsiderar arquivos de configuração
+.vscode/
+.idea/
+.DS_Store
+
+# Desconsiderar arquivos de log
+logs/
+
+# Desconsiderar arquivos de backup
+*.swp
+*~
+
+# Desconsiderar arquivos de cache
+npm-cache/
+.npm/
+
+# Desconsiderar arquivos de testes
+tests/
+
+# Desconsiderar arquivos gerados por ferramentas
+*.egg-info/
+
+# Desconsiderar env 
+.env
