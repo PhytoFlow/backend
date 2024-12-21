@@ -81,9 +81,6 @@ Certifique-se de ter os seguintes itens instalados em sua máquina:
 
 Contribuições são bem-vindas! Abra uma issue ou envie um pull request com suas sugestões.
 
----
-
-**agora coloque em markdown **
 
 
 
