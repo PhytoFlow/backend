@@ -1,3 +1,4 @@
+import io
 import logging
 import boto3
 import os
@@ -7,6 +8,9 @@ import paho.mqtt.client as mqtt
 import json
 import time
 import ssl
+import pandas as pd
+import psycopg2
+
 
 load_dotenv()
 
@@ -22,7 +26,6 @@ s3 = boto3.client(
 )
 
 def list_s3_files(bucket: str, prefix: str, from_date: datetime):
-    """Retrieve S3 file keys filtered by date."""
     try:
         response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
         if "Contents" not in response:
@@ -36,9 +39,31 @@ def list_s3_files(bucket: str, prefix: str, from_date: datetime):
     except Exception as e:
         logger.error(f"Error listing files in bucket '{bucket}': {e}")
         return []
+    
+def read_parquet_from_s3(bucket_name, prefix, from_date):
+    s3 = boto3.client('s3')
+    files = list_s3_files(bucket_name, prefix, from_date)
+
+    if not files:
+        return None
+
+    df_list = []
+
+    for file in files:
+        s3_object = s3.get_object(Bucket=bucket_name, Key=file)
+        file_content = s3_object['Body'].read()
+
+        parquet_data = io.BytesIO(file_content)
+        
+        df = pd.read_parquet(parquet_data)
+        df_list.append(df)
+        print(df)
+
+    final_df = pd.concat(df_list, ignore_index=True)
+    return final_df
+
 
 def on_connect(client, userdata, flags, rc):
-    """Callback para lidar com a conexão MQTT."""
     if rc == 0:
         logger.info("Conectado ao broker MQTT com sucesso!")
         userdata['connected'] = True
@@ -47,7 +72,6 @@ def on_connect(client, userdata, flags, rc):
         userdata['connected'] = False
 
 def create_mqtt_client(client_id, ca_certs, client_cert, client_key):
-    """Cria e configura um cliente MQTT com TLS."""
     userdata = {'connected': False}
     client = mqtt.Client(client_id, protocol=mqtt.MQTTv311, userdata=userdata)
     ssl_context = ssl.create_default_context()
@@ -58,8 +82,8 @@ def create_mqtt_client(client_id, ca_certs, client_cert, client_key):
     client.enable_logger()
     return client
 
+
 def wait_for_connection(client, timeout=5):
-    """Espera até que o cliente MQTT esteja conectado."""
     start_time = time.time()
     while not client._userdata['connected']:
         if time.time() - start_time > timeout:
@@ -67,7 +91,6 @@ def wait_for_connection(client, timeout=5):
         time.sleep(0.1)
 
 def publish_message(client, topic, message):
-    """Publica uma mensagem no tópico especificado."""
     result = client.publish(topic, message)
     if result.rc == mqtt.MQTT_ERR_SUCCESS:
         logger.info(f"Mensagem publicada com sucesso no tópico {topic}. Mensagem: {message}")
@@ -75,7 +98,6 @@ def publish_message(client, topic, message):
         logger.error(f"Falha ao publicar mensagem, código de retorno: {result.rc}")
 
 def send_mqtt_message(identifier, command, time_duration):
-    """Envia uma mensagem ao broker MQTT."""
     try:
         logger.info("Tentando conectar ao broker MQTT...")
 
